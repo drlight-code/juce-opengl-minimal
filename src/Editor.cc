@@ -3,6 +3,8 @@
 TestEditor::TestEditor (TestAudioProcessor &p)
     : AudioProcessorEditor (&p), _mainComponent ()
 {
+  addChildComponent(_mainComponent);
+  _mainComponent.setVisible(true);
 }
 
 TestEditor::~TestEditor () {}
@@ -17,4 +19,5 @@ TestEditor::paint (juce::Graphics &g)
 void
 TestEditor::resized ()
 {
+  _mainComponent.setBounds(getLocalBounds());
 }

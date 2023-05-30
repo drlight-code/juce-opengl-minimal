@@ -110,7 +110,9 @@ TestAudioProcessor::hasEditor () const
 juce::AudioProcessorEditor *
 TestAudioProcessor::createEditor ()
 {
-  return new TestEditor (*this);
+  auto editor = new TestEditor(*this);
+  editor->setBounds(0, 0, 640, 480);
+  return editor;
 }
 
 void
