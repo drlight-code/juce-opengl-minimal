@@ -69,22 +69,95 @@ GLComponent::renderOpenGL ()
 
   OpenGLHelpers::clear(juce::Colours::black);
 
-  auto constexpr drawOnScreen = false;
+  enum class DrawMode {
+    OnScreen,
+    IntoImage,
+    IntoImageLowLevelContext,
+    IntoImageAfterGraphicsDestructor
+  };
 
-  if(drawOnScreen) {
+  auto constexpr drawMode = DrawMode::IntoImageAfterGraphicsDestructor;
+
+  switch(drawMode) {
+  case DrawMode::OnScreen: {
+    // we draw directly using the graphics object that has the OpenGL
+    // context attached
     drawBlobs(graphics.get());
+
+    // RESULT: working
+    break;
   }
-  else {
+
+  case DrawMode::IntoImage: {
+    // first we need to enable the FBO that is attached to the image
     auto fbo = juce::OpenGLImageType::getFrameBufferFrom(*_imageBlend);
     fbo->makeCurrentAndClear();
 
+    // we draw using a Graphics object that has an Image with
+    // OpenGLImageType attached (see renderBoundsChanged())
     juce::Graphics gFBO{*_imageBlend};
     drawBlobs(gFBO);
 
+    // release FBO
     fbo->releaseAsRenderingTarget();
 
+    // afterwards we draw the image using the OpenGL context Graphics
+    // object.
     graphics.get().drawImage(*_imageBlend, _boundsRender.toFloat());
+
+    // RESULT:
+    // working when useLayer = true (see drawBlobs())
+    // incomplete output when useLayer = false (see drawBlobs())
+    break;
   }
+
+  case DrawMode::IntoImageLowLevelContext: {
+        // first we need to enable the FBO that is attached to the image
+        auto fbo = juce::OpenGLImageType::getFrameBufferFrom(*_imageBlend);
+        fbo->makeCurrentAndClear();
+
+        // this time create a LowLevelGraphicsContext from the image
+        // to initialize our Graphics object
+        auto contextFBO = _imageBlend->createLowLevelContext();
+        juce::Graphics gFBO {*contextFBO};
+
+        drawBlobs(gFBO);
+
+        // release FBO
+        fbo->releaseAsRenderingTarget();
+
+        graphics.get().drawImage(*_imageBlend, _boundsRender.toFloat());
+
+        // RESULT: same as above:
+        // working when useLayer = true (see drawBlobs())
+        // incomplete output when useLayer = false (see drawBlobs())
+
+        break;
+      }
+
+  case DrawMode::IntoImageAfterGraphicsDestructor: {
+
+    // We introduce a local scope to make sure that the Graphics
+    // object has been destroyed before we render the Image.
+    {
+      auto fbo = juce::OpenGLImageType::getFrameBufferFrom(*_imageBlend);
+      fbo->makeCurrentAndClear();
+
+      juce::Graphics gFBO{*_imageBlend};
+      drawBlobs(gFBO);
+
+      fbo->releaseAsRenderingTarget();
+    }
+
+    graphics.get().drawImage(*_imageBlend, _boundsRender.toFloat());
+
+    // RESULT:
+    // OpenGL DBG message: GL_INVALID_OPERATION error generated. Target buffer must be bound and not overlapped with mapping range.
+    // JUCE Assertion failure in juce_OpenGLContext.cpp:654
+
+    break;
+  }
+  } // end switch
 }
 
 void
@@ -94,7 +167,7 @@ GLComponent::drawBlobs(juce::Graphics & g)
 
   auto constexpr blobSize = 500.f;
 
-  auto constexpr drawRect = true;
+  auto constexpr drawRect = false;
   auto constexpr useLayer = false;
 
   if (useLayer)
