@@ -10,7 +10,6 @@ public:
   MainWindow (juce::String const &name);
 
   void userTriedToCloseWindow () override;
-  void resized () override;
 
 private:
   bool keyPressed (const juce::KeyPress &k) override;

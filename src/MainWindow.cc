@@ -4,9 +4,7 @@ MainWindow::MainWindow (juce::String const &name)
     : juce::ResizableWindow (name, true), _mainComponent ()
 {
   setWantsKeyboardFocus (true);
-
-  addChildComponent(_mainComponent);
-  _mainComponent.setVisible (true);
+  setContentNonOwned(&_mainComponent, false);
 }
 
 bool
@@ -25,11 +23,4 @@ void
 MainWindow::userTriedToCloseWindow ()
 {
   juce::JUCEApplicationBase::quit ();
-}
-
-void
-MainWindow::resized ()
-{
-  juce::ResizableWindow::resized ();
-  _mainComponent.setBounds(getLocalBounds());
 }
